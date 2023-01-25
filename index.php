@@ -5,12 +5,28 @@ include_once 'includes/aviso.php';
 ?>   
 
 
+<?php 
+$sql= "SELECT COUNT(id) FROM clientes";
+$resultado = mysqli_query($conectar,$sql);
+$dados = mysqli_fetch_array($resultado);
+if($dados[0]==0){
+    $GLOBALS['txt'] = "<h4>Sem clientes a Registar ... </h4>";
+    $GLOBALS['mostrar'] = "hide";
+} else {
+    $GLOBALS['txt'] = "";
+    $GLOBALS['mostrar'] = "";
+}
+?>
+
+
+
 
 <div class="row">
 
     <div class="col s12 m6 push-m3">
         <h3 class="light"> Clientes </h3>
-        <table class="striped">
+        <table class="striped <?php echo $GLOBALS['mostrar']?>">
+            <?php echo $GLOBALS['txt']?>
             <thead>
                 <tr>
                     <th>Nome:</th>
