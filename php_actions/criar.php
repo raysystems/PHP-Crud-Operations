@@ -1,6 +1,14 @@
 <?php
-require_once 'db_conectar.php';
 session_start();
+require_once 'db_conectar.php';
+function clear($input) {
+    global $conectar;
+    $var = mysqli_escape_string($conectar,$input);
+    // xss
+    $var = htmlspecialchars($var);
+
+    return $var;
+}
 
 if (isset($_POST['btn-criar'])) {
     $nome = $_POST['nome'];
@@ -26,10 +34,10 @@ if (isset($_POST['btn-criar'])) {
             echo "<br>".$erro;
         }
     } else {
-        $nome = mysqli_escape_string($conectar,$_POST['nome']);
-        $apelido = mysqli_escape_string($conectar,$_POST['apelido']);
-        $email = mysqli_escape_string($conectar,$_POST['email']);
-        $idade = mysqli_escape_string($conectar,$_POST['idade']);
+        $nome = clear($_POST['nome']);
+        $apelido = clear($_POST['apelido']);
+        $email = clear($_POST['email']);
+        $idade = clear($_POST['idade']);
         $sql = "INSERT INTO clientes (nome,apelido,email,idade) VALUES ('$nome','$apelido','$email','$idade')";
         if(mysqli_query($conectar,$sql)) {
             $_SESSION['mensagem'] = "Criado com Sucesso";

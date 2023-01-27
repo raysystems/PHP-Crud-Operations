@@ -2,6 +2,16 @@
 include_once 'includes/header.php';
 include_once 'php_actions/db_conectar.php';
 session_start();
+
+function clear($input) {
+    global $conectar;
+    $var = mysqli_escape_string($conectar,$input);
+    // xss
+    $var = htmlspecialchars($var);
+
+    return $var;
+}
+
 if(isset($_GET['id'])) {
     $_SESSION['id-post'] = $_GET['id'];
     
@@ -20,10 +30,10 @@ if (isset($_POST['btn-cancelar'])) {
 
 
 if (isset($_POST['btn-editar'])) {
-    $nome = mysqli_escape_string($conectar, $_POST['nome']);
-    $apelido = mysqli_escape_string($conectar, $_POST['apelido']);
-    $email = mysqli_escape_string($conectar, $_POST['email']);
-    $idade = mysqli_escape_string($conectar, $_POST['idade']);
+    $nome = clear($_POST['nome']);
+    $apelido = clear($_POST['apelido']);
+    $email = clear($_POST['email']);
+    $idade = clear($_POST['idade']);
     $id_ = $_SESSION['id-post'];
     $sql = "UPDATE clientes SET nome = '$nome', apelido = '$apelido', email = '$email', idade = '$idade' WHERE id = '$id_'";
     mysqli_query($conectar,$sql);
