@@ -1,0 +1,665 @@
+#include "oficina.h"
+#include <iostream>
+
+using namespace std;
+
+
+// Todo o carro passa por uma fila portanto vamos criar a fila e suas operacoes
+
+carro* fila_principal = new carro[2000];
+int tamanho = 0; // co
+
+//Imprime as opcoes do menu de gestor
+void menu_gestor(bool admin, estacao_trabalho* estacoes, int ets, carro* fila, int _fila, string * marcas_init, string * modelos, int auto_incremento) {
+	int opcao = -1;
+	// Variaveis locais
+	carro* fila_local = fila;
+
+	estacao_trabalho* ets_local = estacoes;
+
+	//While (1)
+	while (1) {
+		opcao = -1;
+		//cin.get();
+
+		cout << "***** Bem-Vindo Gestor *****" << endl;
+		cout << "(1) - Reparacao Manual" << endl;
+		cout << "(2) - Atualizar tempo de Reparacao" << endl;
+		cout << "(3) - Adicionar Prioridade" << endl;
+		cout << "(4) - Remover Mecanico" << endl;
+		cout << "(5) - Gravar Oficina" << endl;
+		cout << "(6) - Carregar Oficina" << endl;
+		cout << "(7) - Imprimir Oficina" << endl;
+		cout << "(8) - Voltar a Simulacao" << endl;
+		cout << "Selecione a sua opcao: " << endl;
+
+		cin >> opcao;
+
+		switch (opcao) {
+		case 1:
+			reparar_gestor(ets_local, ets, fila_local, _fila);
+		
+			break;
+		case 2:
+			tempo_gestor(ets_local, ets, fila_local, _fila);
+			break;
+		case 3:
+			prioridade_gestor(fila_local, _fila);
+			break;
+		case 4:
+			remover_mec(ets_local, ets);
+			break;
+		case 5:
+			gravar_oficina(admin, estacoes,  ets,   marcas_init,   fila,   modelos,  _fila);
+			
+			break;
+		case 6:
+			ler_oficina(modelos,estacoes, fila, ets, auto_incremento);
+			break;
+		case 7:
+			imprimir_ets(ets, estacoes, fila, _fila);
+			//simulacao(admin, estacoes, ets, marcas_init, fila, modelos, _fila);
+			break;
+		case 8:
+			//system("cls");
+			cout << "Saiu do menu de gestor, voltando a simulacao " << endl;
+			break;
+			//simulacao(admin, estacoes, ets, marcas_init, fila, modelos, _fila);
+		default:
+			cout << "ERRO: Nao digitou uma opcao valida \n" << endl;
+			break;
+			//menu_gestor();
+
+		}
+		if (opcao == 8) {
+			//simulacao(admin, estacoes, ets, marcas_init, fila, modelos, _fila);
+			break;
+		}
+		else {
+			continue;
+		}
+	}
+	simulacao(admin, estacoes, ets, marcas_init, fila, modelos, _fila, auto_incremento);
+}
+int contar_linhas(string caminho) {
+	int i = 0;
+	ifstream contar(caminho);
+	if (contar.is_open() == false) {
+		cout << "ERRO AO LER O ARQUIVO PASSADO " << caminho << endl;
+		return -1;
+		
+	}
+	else {
+		string aux = "";
+		while (getline(contar, aux)) {
+			i++;
+		}
+		contar.close();
+	}
+	return i;
+}
+
+void ler_oficina(string * modelos, estacao_trabalho* &estacoes, carro* &fila, int &ets, int &auto_incremento) {
+	
+
+	
+	//Leitura do numero de ets e o numero de carros na fila principal
+	int ets_lidas = 0;
+	//cout << "ETS LIDAS / " << ets_lidas << endl;
+	int tamanho = 0;
+	int admin = 0;
+	ifstream counts2("./data/simulacao_counts.txt");
+	if (counts2.is_open()) {
+		string aux = "";
+		getline(counts2, aux);
+		ets_lidas = stoi(aux);
+		getline(counts2, aux);
+		tamanho = stoi(aux);
+		getline(counts2, aux);
+		admin = stoi(aux);
+		counts2.close();	
+	}
+	else {
+		cout << "ERRO AO LER O ARQUIVO DE COUNTS" << endl;
+		return;
+		
+	}
+	cout << "ETS LIDAS / " << ets_lidas << endl;
+	//Carregar ETS Do arquivo binario
+	estacao_trabalho* estacoes_carregar = new estacao_trabalho[ets_lidas];
+	ifstream dados("./data/simulacao_ets_data.bin", ios::binary);
+
+	if (dados.is_open() == false) {
+		cout << "ERRO AO LER O ARQUIVO BINARIO ETS" << endl;
+		return;
+		
+	}
+	else {
+		for (int i = 0; i < ets_lidas; i++) {
+			//Cada endereco de memoria das ets sao carregados e I posicao anterioremente gravada sequencialmente
+			//estacao_trabalho& estacao = ;
+			dados.read(reinterpret_cast<char*>(&estacoes_carregar[i]), sizeof(estacoes_carregar[i]));
+		}
+		dados.close();
+
+	}
+	//Carregar a fila Do arquivo binario
+	carro* fila_ficheiro = new carro[tamanho];
+	ifstream dados_fila("./data/simulacao_fila_data.bin", ios::binary);
+	if (dados_fila.is_open() == false) {
+		cout << "ERRO AO LER O ARQUIVO BINARIO FILA" << endl;
+		return;
+		
+	}
+	else {
+		for (int i = 0; i < tamanho; i++) {
+			//Cada endereco de memoria das ets sao carregados e I posicao anterioremente gravada sequencialmente
+			//carro& fila_lida = fila_ficheiro[i];
+			dados_fila.read(reinterpret_cast<char*>(&fila_ficheiro[i]), sizeof(fila_ficheiro[i]));
+		}
+		dados_fila.close();
+
+	}
+	//Ler marcas guardadas da inicilizacao ets
+	ifstream marcas("./data/simualcao_marcas.txt");
+	string* marcas_ets = new string[ets_lidas];
+	string aux = "";
+	int index = 0;
+	if (marcas.is_open() == false) {
+		cout << "ERRO AO LER O ARQUIVO DE COUNTS" << endl;
+		return;
+
+	}
+	else {
+		for (int i = 0; i < ets_lidas; i++) {
+			getline(marcas, aux);
+			marcas_ets[i] = aux;
+			cout << marcas_ets[i] << endl;
+		}
+		marcas.close();
+	}
+
+	bool is_admin = false;
+
+	if (admin == 1) {
+		is_admin = true;
+	}
+	else {
+		is_admin = false;
+	}
+
+	estacoes = estacoes_carregar;
+	ets = ets_lidas;
+	fila = fila_ficheiro;
+	auto_incremento = fila_ficheiro[tamanho-1].id;
+
+	imprimir_ets(ets_lidas, estacoes_carregar, fila_ficheiro, tamanho);
+	simulacao(admin, estacoes, ets_lidas, marcas_ets, fila, modelos, tamanho, auto_incremento);
+	//menu_gestor(is_admin, estacoes_carregar, ets_lidas, fila_ficheiro, tamanho, marcas_ets, modelos, fila_ficheiro[tamanho].id);
+	
+}
+
+void gravar_oficina(bool admin, estacao_trabalho* estacoes, int ets, string* marcas_init, carro* fila,string *modelos, int _fila) {
+	//Apagar os ficheiros da simulacao anterior
+	remove("./data/simulacao_ets_data.bin");
+	remove("./data/simulacao_counts.txt");
+	remove("./data/simulacao_fila_data.bin");
+	remove("./data/simualcao_marcas.txt");
+
+	//Gravar em binario pois é mais facil para ler
+
+	ofstream ets_data("./data/simulacao_ets_data.bin", ios::binary);
+	if (ets_data.is_open()) { 
+		//Verificar se esta aberto
+	    // A funcao ets_data.write espera um apontador para char por definicao
+	    // Como estou a enviar um apontador para estruturas estacao_trabalho
+	    // Vou converte lo para atraves dereinterpret_cast<char*> um apontador para char
+		// Passamos o endereco de memoria para a primeira posicao do array &estacoes[0]
+		// E a funcao write() utiliza o char* por ser o mais adequado para escrita binaria 0 / 1
+
+		ets_data.write(reinterpret_cast<char*>(&estacoes[0]), sizeof(estacao_trabalho) * ets);
+
+		ets_data.close(); //fechar o ficheiro
+		
+		 
+	}
+	else {
+		cout << "Erro ao gravar! ~ Binary Error dentro da Funcao do binario" << endl;
+	}
+
+	//Gravar em Binario a fila
+	ofstream fila_data("./data/simulacao_fila_data.bin", ios::binary);
+	if (fila_data.is_open()) {
+	
+		fila_data.write(reinterpret_cast<char*>(&fila[0]), sizeof(carro) * _fila);
+
+
+		fila_data.close(); //fechar o ficheiro
+
+	}
+	else {
+		cout << "Erro ao gravar! ~ Binary Error dentro da Funcao do binario" << endl;
+	}
+
+
+	// Agora para controlo guardar num txt o nr de ets inicializadas e consequentemente o tamanho da fila principal
+
+	ofstream ets_num("./data/simulacao_counts.txt");
+	ets_num << ets << endl;
+	ets_num << _fila << endl;
+	if (admin) {
+		ets_num << 1 << endl;
+	}
+	else {
+		ets_num << 0 << endl;
+	}
+	ets_num.close();
+
+
+	//Gravar as marcas Inicializadas
+	ofstream marcas("./data/simualcao_marcas.txt");
+	if (marcas.is_open()) {
+		for (int i = 0; i < ets; i++) {
+			marcas << marcas_init[i] << endl;
+		}
+		marcas.close();
+	}
+	else {
+		cout << "Erro ao gravar as marcas inicializadas para cada et!" << endl;
+	}
+	
+	
+
+}
+
+
+
+void remover_mec(estacao_trabalho* estacoes, int ets) {
+	string mec = "";
+	cin.get();
+	cout << "Qual o mecanico que quer remover?" << endl;
+	getline(cin, mec);
+	//Pesquisar a ets onde o mecanico se encontra>
+	for (int i = 0; i < ets; i++) {
+		if (estacoes[i].mec_chefe == mec) {
+			cout << "Qual o novo mecanico a associar a esta ET > " << i << " ?" << endl;
+			cin.get();
+			getline(cin, mec);
+			estacoes[i].mec_chefe = mec;
+			// Reparar todos os carros desta ET
+			for (int j = 0; j < estacoes[i].tam_fila; j++) {
+				estacoes[i].carros_rep[estacoes[i].reparados] = estacoes[i].carros_fila[j];
+				estacoes[i].reparados++;
+				estacoes[i].faturacao += estacoes[i].preco * estacoes[i].carros_fila[j].estadia;
+				atualizar_fila(estacoes[i].carros_fila, j, estacoes[i].tam_fila);
+				estacoes[i].tam_fila--;
+			}
+			cout << "Mecanico Atualizado com sucesso!" << endl;
+			cout << "Mecanico > " << mec << endl;
+			cout << "ET Responsavel > " << i << endl;
+
+			return;
+		} 
+		
+	}
+	cout << "Nenhum mecanico encontrado!" << endl;
+}
+
+void prioridade_gestor(carro* fila, int tam) {
+	int ID = 0;
+	cout << endl << "Introduza o ID do carro que deseja tornar prioritario: ";
+	cin >> ID;
+	cout << endl;
+	for (int i = 0; i < tam; i++) {
+		if (fila[i].id == ID) {
+			if (fila[i].prioritario == true) {
+				cout << "Esta operacao nao e possivel pois este veículo ja e prioritario." << endl;
+				return;
+			} else {
+				fila[i].prioritario = true;
+				cout << "O veiculo de ID " << ID << " foi modificado para veiculo prioritario." << endl;
+				return;
+			}
+		}
+	}
+	cout << "Nao foi encontrado nenhum veiculo com o ID " << ID << endl;
+}
+
+
+void tempo_gestor(estacao_trabalho* estacoes, int ets, carro* fila, int _fila) {
+
+	string marca = "";
+	string modelo = "";
+	int tempo = 0;
+	bool encontrado = false;
+
+	imprimir_ets(ets, estacoes, fila, _fila);
+
+	cout << "Qual a marca do carro que quer atualizar o tempo?" << endl;
+	cin >> marca;
+	cout << "Qual o modelo do carro que quer atualizar o tempo?" << endl;
+	cin >> modelo;
+	cout << "Tempo maximo necessario?" << endl;
+	cin >> tempo;
+
+	for (int i = 0; i < _fila; i++) {
+		if (fila[i].marca == marca && fila[i].modelo == modelo) {
+			fila[i].temp_max = tempo;
+			encontrado = true;
+		}
+	}
+
+	if (!encontrado) {
+		cout << "Nenhum carro encontrado" << endl;
+		
+	}
+	
+}
+
+void reparar_gestor(estacao_trabalho* estacoes, int ets, carro*fila, int tamanho) {
+	
+	string marca = "";
+	string modelo = "";
+	bool encontrado = false;
+	cout << "Qual a marca do carro que quer remover?" << endl;
+	cin >> marca;
+	cout << "Qual o modelo do carro que quer remover?" << endl;
+	cin >> modelo;
+
+	for (int i = 0; i < ets; i++) {
+
+		for (int j = 0; j < estacoes[i].tam_fila; j++) {
+			if (estacoes[i].carros_fila[j].marca == marca && estacoes[i].carros_fila[j].modelo == modelo) {
+				encontrado = true;
+				estacoes[i].faturacao += estacoes[i].carros_fila[j].estadia * estacoes[i].preco;
+				estacoes[i].carros_rep[estacoes[i].reparados] = estacoes[i].carros_fila[j];
+				estacoes[i].reparados++;
+				atualizar_fila(estacoes[i].carros_fila, j, estacoes[i].tam_fila);
+				estacoes[i].tam_fila--;
+				
+			}
+		}
+	}
+	if (!encontrado) {
+		cout << "Nenhum carro encontrado" << endl;
+		
+	}
+	
+}
+
+void atualizar_fila(carro* fila,int indice, int tamanho) {
+	
+		for (int i = indice; i < tamanho - 1; i++) {
+			fila[i] = fila[i + 1];
+		}
+	
+	
+}
+
+void prioridades(carro* fila, int tam) { // Ordenar a fila por prioritarios  1 p 1 p p 1 1 P 1 1 1 P ~~ P 1 1 (Bubble sort)
+	bool swap = true;
+
+	while (swap) {
+		swap = false;
+		for (int i = 0; i < tam; i++) {
+			if (fila[i].prioritario == false && fila[i + 1].prioritario == true) {
+				swap = true;
+				carro aux = fila[i];
+				fila[i] = fila[i + 1];
+				fila[i + 1] = aux;
+
+			}
+		}
+
+	}
+
+}
+
+
+void ordenar_tempos(carro* fila, int tam) { //  (Bubble sort)
+	bool swap = true;
+
+	while (swap) {
+		swap = false;
+		for (int i = 0; i < tam; i++) {
+			if (fila[i].estadia < fila[i + 1].estadia) {
+				swap = true;
+				carro aux = fila[i];
+				fila[i] = fila[i + 1];
+				fila[i + 1] = aux;
+
+			}
+		}
+
+	}
+
+}
+
+
+void atualizar_dias(int dias, estacao_trabalho* estacoes, int ets, carro* fila, int tam_fila) {
+	for (int i = 0; i < ets; i++) {
+		for (int j = 0; j < estacoes[i].tam_fila; j++) {
+			estacoes[i].carros_fila[j].estadia++;
+		}
+	}
+	//for (int k = 0; k < tam_fila; k++) {
+		//fila[k].estadia++;
+	//}
+}
+
+void imprimir_ets(int ets, estacao_trabalho* estacoes, carro* fila, int tam_fila) {
+	//Copias locais
+	estacao_trabalho* estacoes_c = estacoes;
+	carro* fila_c = fila;
+
+
+
+	for (int i = 0; i < ets; i++) {
+		//ordenar_tempos(estacoes[i].carros_fila, estacoes[i].tam_fila);
+		cout << "==================== " << "ESTACAO DE TRABALHO -> N " << i + 1 << " =====================" << endl;
+		cout << "Mecanico > " << estacoes_c[i].mec_chefe << endl;
+		cout << "Capacidade > " << estacoes_c[i].capacidade << endl;
+		cout << "Carros > " << estacoes_c[i].tam_fila << endl;
+		cout << "Marca Especializada > " << estacoes_c[i].marca_esp << endl;
+		cout << "Total Faturado > " << estacoes_c[i].faturacao << " euros" << endl;
+		cout << "Carros em reparacao: " << endl;
+		for (int j = 0; j < estacoes_c[i].tam_fila; j++) {
+			cout << "Carro ID > " << estacoes_c[i].carros_fila[j].id << " | " << estacoes_c[i].carros_fila[j].marca << "-" << estacoes_c[i].carros_fila[j].modelo << " | " << "Prioritario > "
+				<< estacoes_c[i].carros_fila[j].prioritario << " | " << "Tempo de reparacao (max) > " << estacoes_c[i].carros_fila[j].temp_max <<
+				" | " << "Dias na ET > " << estacoes_c[i].carros_fila[j].estadia << endl;
+		}
+		
+
+	}
+
+	cout << "=====================================================================" << endl;
+	cout << endl;
+	cout << "========================== Lista de espera ==========================" << endl;
+	//Ordenar a fila
+	//ordenar_tempos(fila, tam_fila);
+	//Imprimir a fila principal
+	for (int k = 0; k < tam_fila; k++) {
+		cout << "Carro ID > " << fila_c[k].id << " | " << fila_c[k].marca << "-" << fila_c[k].modelo << " | " << "Prioritario > "
+			<< fila_c[k].prioritario << " | " << "Tempo de reparacao (max) > " << fila_c[k].temp_max <<
+			" | " << "Dias na Fila > " << fila_c[k].estadia << endl;
+	}
+
+	cout << "=====================================================================" << endl;
+}
+
+
+void reparar(estacao_trabalho* estacoes, int ets) {
+	int probabilidade = rand() % 100 + 1;
+	int carros = 0;
+	int reparados = 0;
+	int tempo_max = 0;
+	int estadia = 0;
+	//Percorrer cada et primeiro
+	for (int i = 0; i < ets; i++) {
+		//Dentro de cada ets reparar os carros 15%
+
+		for (int k = 0; k < estacoes[i].tam_fila; k++) {
+			probabilidade = rand() % 100 + 1;
+			tempo_max = estacoes[i].carros_fila[k].temp_max;
+			estadia = estacoes[i].carros_fila[k].estadia;
+			if (estadia >= tempo_max) { // Caso exceda o tempo maximo
+				reparados = estacoes[i].reparados;
+				estacoes[i].carros_rep[reparados] = estacoes[i].carros_fila[k];
+				estacoes[i].reparados++;
+				//Atualizar faturacao
+				estacoes[i].faturacao += estadia * estacoes[i].preco;
+				//Remover o carro reparado do carros_fila
+				atualizar_fila(estacoes[i].carros_fila, k, estacoes[i].tam_fila);
+				estacoes[i].tam_fila--;
+
+			}
+			else {
+				if (probabilidade <= 15) { // caso esteja na probabilidade dos 15%
+					reparados = estacoes[i].reparados;
+					estacoes[i].carros_rep[reparados] = estacoes[i].carros_fila[k];
+					estacoes[i].reparados++;
+					//Atualizar faturacao
+					estacoes[i].faturacao += estacoes[i].carros_fila[k].estadia * estacoes[i].preco;
+					//Remover o carro reparado do carros_fila
+					atualizar_fila(estacoes[i].carros_fila, k, estacoes[i].tam_fila);
+					estacoes[i].tam_fila--;
+				}
+			}
+
+
+		}
+
+	}
+}
+
+
+void simulacao(bool admin, estacao_trabalho* estacoes,int ets, string* marcas_init,carro*fila, string* modelos, int _fila, int auto_incremento) {
+	
+
+	
+
+
+	// Ordenar Carros prioritarios todos antes de comecar o primeiro cicl
+	//um array contendo apontadores para os carros
+	int tamanho_fila = _fila;
+	string tecla;
+	int dia = 1;
+	while (1) {
+		// Garantir que a cada ciclo com a adicao dos 10 carros fica tudo ordenado por prioridades!
+	    prioridades(fila, tamanho_fila);
+		//Adicionar os carros que estao na fila a fila das ets com a marca especializada conrrespondente
+
+		//Funcao para reparar os carros nas ets segundo o criterio definido
+		reparar(estacoes, ets);
+
+		// Adicionar os 10 carros
+		// Colocar os 10 carros na fila
+		int marcas_random = 0;
+		//int incremento = fila[tamanho_fila].id; //Ultimo id
+		int mod_rand = 0;
+		int prob = 0;
+		for (int x = 0; x < 8; x++) {
+			mod_rand = rand() % 308;
+			prob = rand() % 100 + 1;
+			auto_incremento++;
+			marcas_random = rand() % ets; // 
+			fila[tamanho_fila].id = auto_incremento;
+			fila[tamanho_fila].marca = marcas_init[1];
+			fila[tamanho_fila].modelo = modelos[1];
+
+			if (prob <= 5) {
+				fila[tamanho_fila].prioritario = true;
+			}
+			fila[tamanho_fila].temp_max = rand() % 4 + 2;
+			tamanho_fila++;
+		}
+
+		// Fim do add dos 10 carros
+
+		
+		// Garantir prioridades apos adicionar os carros assim sera retirado segundo a logica das prioridades!
+		
+    	prioridades(fila, tamanho_fila);
+		
+		//Retirar 8 para as ets carros
+		for (int i = 0; i < 8; i++) {
+
+			for (int j = 0; j < ets; j++) {
+				if (fila[i].marca == estacoes[j].marca_esp && estacoes[j].tam_fila < estacoes[j].capacidade) {
+					if (fila[i].estadia >= fila[i].temp_max) {
+						estacoes[j].carros_rep[estacoes[j].reparados] = fila[i];
+						estacoes[j].reparados++;
+						estacoes[j].faturacao += fila[i].estadia * estacoes[j].preco;
+						atualizar_fila(fila, i, tamanho_fila); // Atualizar desde i
+						tamanho_fila--;
+						break;
+					}
+					else {
+						estacoes[j].carros_fila[estacoes[j].tam_fila] = fila[i];
+						estacoes[j].tam_fila++;
+						//cout << estacoes[j].tam_fila << endl;
+						//Atualizar a fila
+						atualizar_fila(fila, i, tamanho_fila); // Atualizar desde i
+						tamanho_fila--;
+						break;
+
+					}
+					
+				}
+
+			}
+
+		}
+		
+
+		// Garantir prioridades apos retirar os carros assim sera retirado segundo a logica das prioridades!
+
+		prioridades(fila, tamanho_fila);
+
+		// Fim de retirar 8 carros
+
+
+		//Imprimir a Oficina
+		imprimir_ets(ets, estacoes, fila, tamanho_fila);
+
+		if (admin) {
+			cout << endl;
+			cout << "============= SELECIONE A SUA OPCAO =============" << endl;
+			cout << "Dia Seguinte (s) || Menu de Administrador (g)" << endl;
+			cout << "============= SELECIONE A SUA OPCAO =============" << endl;
+			cout << endl;
+			cin >> tecla;
+			if (tecla == "g") {
+			
+			
+				break;
+			}
+			if (tecla == "s") {
+				dia++;
+				//system("cls");
+				atualizar_dias(dia, estacoes, ets, fila, tamanho_fila);
+				continue;
+			
+			}
+		
+		} else if(!admin) {
+			cout << endl;
+			cout << "============= SELECIONE A SUA OPCAO =============" << endl;
+			cout << "Dia Seguinte (s)" << endl;
+			cout << "============= SELECIONE A SUA OPCAO =============" << endl;
+			cout << endl;
+			cin >> tecla;
+			if (tecla == "s") {
+				dia++;
+				
+				atualizar_dias(dia, estacoes, ets, fila, tamanho_fila);
+				break;
+			}
+		
+		  }
+
+	}
+	
+	menu_gestor(admin, estacoes, ets, fila, tamanho_fila, marcas_init, modelos, auto_incremento);
+
+}
